@@ -4,3 +4,6 @@ AccentureMIPTHHack
 
 # Demo
 https://accenture20200426120415.azurewebsites.net/
+
+# Jupiter Notebook Analytics
+https://github.com/NaraIndra/sss
