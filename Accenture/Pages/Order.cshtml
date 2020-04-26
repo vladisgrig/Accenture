@@ -1,0 +1,315 @@
+﻿@page
+@model OrderModel
+@{
+    ViewData["Title"] = "Operations Timeline For Order " + ViewData["orderId"];
+}
+<h1>@ViewData["Title"]</h1>
+<br />
+<div id="chart-elem"></div>
+<svg width="1000"
+     height="600">
+</svg>
+<script>
+    document.addEventListener("DOMContentLoaded", function (event) {
+    window.dataSet = @Html.Raw(ViewData["dataSet"]);
+            window.data = window.dataSet.map(d => {
+return {
+...d,
+start: Date.parse(d.Start),
+end: Date.parse(d.End)
+}
+}).sort((a,b)=>  a.start-b.start);
+
+            height = 600;
+
+        width = 1000;
+
+
+
+
+        margin = ({ top: 30, right: 30, bottom: 30, left: 30 });
+
+
+    formatDate = d=> (new Date(+d.toString())).toDateString();
+
+y= d3.scaleBand()
+    .domain(d3.range(window.data.length))
+    .range([0,height - margin.bottom - margin.top])
+    .padding(0.2);
+
+    x = d3.scaleLinear()
+      .domain([d3.min(window.data, d => d.start), d3.max(window.data, d => d.end)])
+      .range([0, width - margin.left - margin.right]);
+
+      dataByTimeline = d3.nest().key(d=>d.timeline).entries(window.data);
+
+        dataByRegion = d3.nest().key(d => d.MainId).entries(window.data);
+
+axisBottom = d3.axisBottom(x)
+    .tickPadding(2)
+    .tickFormat(formatDate)
+
+    axisTop = d3.axisTop(x)
+    .tickPadding(2)
+    .tickFormat(formatDate)
+
+        regions = d3.nest().key(d => d.MainId).entries(window.data).map(d => d.key)
+    timelines = dataByTimeline.map(d=>d.key)
+
+    color = d3.scaleOrdinal(d3.schemeSet2).domain(regions)
+
+        var chart = function() {
+debugger;
+let filteredData;
+
+  filteredData = window.data.sort((a,b)=>  a.start-b.start);
+
+            filteredData.forEach(d => d.color = d3.color(color(d.MainId)))
+
+
+let parent;
+if (!parent) {
+  parent = document.createElement("div");
+  const svg = d3.select("svg")
+
+
+  const g = svg.append("g").attr("transform", (d,i)=>`translate(${margin.left} ${margin.top})`);
+
+  const groups = g
+  .selectAll("g")
+  .data(filteredData)
+  .enter()
+  .append("g")
+  .attr("class", "civ")
+
+    getTooltipContent = function(d) {
+return `<b>${d.Id}</b>
+<br/>
+<b style="color:${d.color.darker()}">${d.MainId}</b>
+<br/>
+${formatDate(d.start)} - ${formatDate(d.end)}
+`
+}
+
+
+      createTooltip = function(el) {
+  el
+    .style("position", "absolute")
+    .style("pointer-events", "none")
+    .style("top", 0)
+    .style("opacity", 0)
+    .style("background", "white")
+    .style("border-radius", "5px")
+    .style("box-shadow", "0 0 10px rgba(0,0,0,.25)")
+    .style("padding", "10px")
+    .style("line-height", "1.3")
+    .style("font", "11px sans-serif")
+}
+
+getRect = function(d){
+  const el = d3.select(this);
+  const sx = x(d.start);
+  const w = x(d.end) - x(d.start);
+  const isLabelRight =(sx > width/2 ? sx+w < width : sx-w>0);
+
+  el.style("cursor", "pointer")
+
+  el
+    .append("rect")
+    .attr("x", sx)
+    .attr("height", y.bandwidth())
+    .attr("width", w)
+    .attr("fill", d.color);
+
+  el
+    .append("text")
+    .text(d.Id)
+    .attr("x",isLabelRight ? sx-5 : sx+w+5)
+    .attr("y", 2.5)
+    .attr("fill", "black")
+    .style("text-anchor", isLabelRight ? "end" : "start")
+    .style("dominant-baseline", "hanging");
+}
+
+  const tooltip = d3.select(document.createElement("div")).call(createTooltip);
+
+  const line = svg.append("line").attr("y1", margin.top-10).attr("y2", height-margin.bottom).attr("stroke", "rgba(0,0,0,0.2)").style("pointer-events","none");
+
+  groups.attr("transform", (d,i)=>`translate(0 ${y(i)})`)
+
+  groups
+    .each(getRect)
+    .on("mouseover", function(d) {
+    d3.select(this).select("rect").attr("fill", d.color.darker())
+
+    tooltip
+      .style("opacity", 1)
+      .html(getTooltipContent(d))
+  })
+    .on("mouseleave", function(d) {
+    d3.select(this).select("rect").attr("fill", d.color)
+    tooltip.style("opacity", 0)
+  })
+
+
+  svg
+    .append("g")
+    .attr("transform", (d,i)=>`translate(${margin.left} ${margin.top-10})`)
+    .call(axisTop)
+
+  svg
+    .append("g")
+    .attr("transform", (d,i)=>`translate(${margin.left} ${height-margin.bottom})`)
+    .call(axisBottom)
+
+
+
+  svg.on("mousemove", function(d) {
+
+    let [x,y] = d3.mouse(this);
+    line.attr("transform", `translate(${x} 0)`);
+    y +=20;
+    if(x>width/2) x-= 100;
+
+    tooltip
+      .style("left", x + "px")
+      .style("top", y + "px")
+  })
+
+  parent.appendChild(svg.node());
+  parent.appendChild(tooltip.node());
+  parent.groups = groups;
+
+} else {
+
+
+  const civs = d3.selectAll(".civ")
+
+  civs.data(filteredData, d=>d.Id)
+    .transition()
+    // .delay((d,i)=>i*10)
+    .ease(d3.easeCubic)
+    .attr("transform", (d,i)=>`translate(0 ${y(i)})`)
+
+
+}
+return parent
+
+}
+
+    document.getElementById("chart-elem").append(    chart());
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function checkbox(config = {}) {
+  let {
+    value: formValue,
+    title,
+    description,
+    submit,
+    disabled,
+    options
+  } = Array.isArray(config) ? { options: config } : config;
+  options = options.map(o =>
+    typeof o === "string" ? { value: o, label: o } : o
+  );
+  const form = input({
+    type: "checkbox",
+    title,
+    description,
+    submit,
+    getValue: input => {
+      if (input.length)
+        return Array.prototype.filter
+          .call(input, i => i.checked)
+          .map(i => i.value);
+      return input.checked ? input.value : false;
+    },
+    form: html`
+      <form>
+        ${options.map(({ value, label }) => {
+          const input = html`<input type=checkbox name=input ${
+            (formValue || []).indexOf(value) > -1 ? "checked" : ""
+          } style="vertical-align: baseline;" />`;
+          input.setAttribute("value", value);
+          if (disabled) input.setAttribute("disabled", disabled);
+          const tag = html`<label style="display: inline-block; margin: 5px 10px 3px 0; font-size: 0.85em;">
+           ${input}
+           ${label}
+          </label>`;
+          return tag;
+        })}
+      </form>
+    `
+  });
+  form.output.remove();
+  return form;
+}
+
+function select(config = {}) {
+  let {
+    value: formValue,
+    title,
+    description,
+    disabled,
+    submit,
+    multiple,
+    size,
+    options
+  } = Array.isArray(config) ? { options: config } : config;
+  options = options.map(o =>
+    typeof o === "object" ? o : { value: o, label: o }
+  );
+  const form = input({
+    type: "select",
+    title,
+    description,
+    submit,
+    attributes: { disabled },
+    getValue: input => {
+      const selected = Array.prototype.filter
+        .call(input.options, i => i.selected)
+        .map(i => i.value);
+      return multiple ? selected : selected[0];
+    },
+    form: html`
+      <form>
+        <select name="input" ${
+          multiple ? `multiple size="${size || options.length}"` : ""
+        }>
+          ${options.map(({ value, label }) =>
+            Object.assign(html`<option>`, {
+              value,
+              selected: Array.isArray(formValue)
+                ? formValue.includes(value)
+                : formValue === value,
+              textContent: label
+            })
+          )}
+        </select>
+      </form>
+    `
+  });
+  form.output.remove();
+  return form;
+}
+});
+
+
+</script>

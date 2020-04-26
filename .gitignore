@@ -1,0 +1,11 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs/Accenture
+/Accenture/bin
+/Accenture/obj
+*.pubxml
+*.user
+/Accenture/appsettings.Development.json
+/Accenture/appsettings.Production.json
